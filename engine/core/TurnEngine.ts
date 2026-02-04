@@ -169,7 +169,6 @@ export class TurnEngine {
 
   /**
    * Phase 8 — Scoring & conditions de fin
-   * La logique réelle (victoire, éliminations) viendra plus tard.
    */
   private runScoring(
     gameState: GameState
@@ -181,6 +180,47 @@ export class TurnEngine {
           turn: gameState.instance.currentTurn,
           phase: 'scoring',
           message: 'Scoring phase executed (no win/lose conditions yet)',
+          visibility: 'public',
+        },
+      ],
+    };
+  }
+
+  /**
+   * Phase 9 — Logs finaux
+   * Centralise / ordonne les logs du tour.
+   */
+  private finalizeLogs(
+    gameState: GameState,
+    logs: LogEntry[]
+  ): { logs: LogEntry[] } {
+    return {
+      logs: [
+        ...logs,
+        {
+          turn: gameState.instance.currentTurn,
+          phase: 'logs',
+          message: 'Turn logs finalized',
+          visibility: 'public',
+        },
+      ],
+    };
+  }
+
+  /**
+   * Phase 10 — Clôture du tour
+   * Prépare le prochain tour (sans mutation du GameState pour le MVP).
+   */
+  private closeTurn(
+    gameState: GameState
+  ): { nextGameState: GameState; logs: LogEntry[] } {
+    return {
+      nextGameState: gameState,
+      logs: [
+        {
+          turn: gameState.instance.currentTurn,
+          phase: 'closure',
+          message: 'Turn closed',
           visibility: 'public',
         },
       ],
@@ -234,19 +274,21 @@ export class TurnEngine {
     allLogs.push(...events.logs);
     allDeltas.push(...events.deltas);
 
-    // Phase 8 — scoring & fin
+    // Phase 8 — scoring
     const scoring = this.runScoring(gameState);
     allLogs.push(...scoring.logs);
     allDeltas.push(...scoring.deltas);
 
-    // TODO:
-    // 9. logs finaux
-    // 10. clôture du tour
+    // Phase 9 — logs finaux
+    const finalLogs = this.finalizeLogs(gameState, allLogs);
+
+    // Phase 10 — clôture
+    const closure = this.closeTurn(gameState);
 
     return {
       deltas: allDeltas,
-      logs: allLogs,
-      nextGameState: gameState,
+      logs: [...finalLogs.logs, ...closure.logs],
+      nextGameState: closure.nextGameState,
     };
   }
 }

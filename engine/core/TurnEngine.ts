@@ -131,7 +131,6 @@ export class TurnEngine {
 
   /**
    * Phase 6 — Combats
-   * La résolution réelle des combats sera implémentée plus tard.
    */
   private runCombats(
     gameState: GameState
@@ -143,6 +142,26 @@ export class TurnEngine {
           turn: gameState.instance.currentTurn,
           phase: 'combat',
           message: 'Combat phase executed (no effects yet)',
+          visibility: 'public',
+        },
+      ],
+    };
+  }
+
+  /**
+   * Phase 7 — Événements
+   * Les événements galactiques seront implémentés plus tard.
+   */
+  private runEvents(
+    gameState: GameState
+  ): { deltas: Delta[]; logs: LogEntry[] } {
+    return {
+      deltas: [],
+      logs: [
+        {
+          turn: gameState.instance.currentTurn,
+          phase: 'events',
+          message: 'Event phase executed (no events triggered)',
           visibility: 'public',
         },
       ],
@@ -191,8 +210,12 @@ export class TurnEngine {
     allLogs.push(...combat.logs);
     allDeltas.push(...combat.deltas);
 
+    // Phase 7 — événements
+    const events = this.runEvents(gameState);
+    allLogs.push(...events.logs);
+    allDeltas.push(...events.deltas);
+
     // TODO:
-    // 7. événements
     // 8. scoring & fin de partie
     // 9. logs finaux
     // 10. clôture du tour

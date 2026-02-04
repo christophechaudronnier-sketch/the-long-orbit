@@ -150,7 +150,6 @@ export class TurnEngine {
 
   /**
    * Phase 7 — Événements
-   * Les événements galactiques seront implémentés plus tard.
    */
   private runEvents(
     gameState: GameState
@@ -162,6 +161,26 @@ export class TurnEngine {
           turn: gameState.instance.currentTurn,
           phase: 'events',
           message: 'Event phase executed (no events triggered)',
+          visibility: 'public',
+        },
+      ],
+    };
+  }
+
+  /**
+   * Phase 8 — Scoring & conditions de fin
+   * La logique réelle (victoire, éliminations) viendra plus tard.
+   */
+  private runScoring(
+    gameState: GameState
+  ): { deltas: Delta[]; logs: LogEntry[] } {
+    return {
+      deltas: [],
+      logs: [
+        {
+          turn: gameState.instance.currentTurn,
+          phase: 'scoring',
+          message: 'Scoring phase executed (no win/lose conditions yet)',
           visibility: 'public',
         },
       ],
@@ -215,8 +234,12 @@ export class TurnEngine {
     allLogs.push(...events.logs);
     allDeltas.push(...events.deltas);
 
+    // Phase 8 — scoring & fin
+    const scoring = this.runScoring(gameState);
+    allLogs.push(...scoring.logs);
+    allDeltas.push(...scoring.deltas);
+
     // TODO:
-    // 8. scoring & fin de partie
     // 9. logs finaux
     // 10. clôture du tour
 

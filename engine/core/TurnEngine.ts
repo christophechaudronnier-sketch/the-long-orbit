@@ -12,11 +12,31 @@ import { Delta } from '../types/Delta';
 import { LogEntry } from '../types/Log';
 
 export class TurnEngine {
+    /**
+   * Pré-contrôles avant l’exécution d’un tour.
+   * Aucune modification du GameState n’est autorisée ici.
+   */
+  private preChecks(gameState: GameState): void {
+    if (!gameState) {
+      throw new Error('GameState is undefined');
+    }
+
+    if (!gameState.instance) {
+      throw new Error('GameState.instance is missing');
+    }
+
+    if (gameState.instance.status !== 'active') {
+      throw new Error(
+        `Cannot execute turn: instance status is ${gameState.instance.status}`
+      );
+    }
+  }
+
   /**
    * Exécute un tour de jeu complet.
    * La logique sera ajoutée étape par étape.
    */
-  executeTurn(
+   executeTurn(
     gameState: GameState,
     intentions: Intention[]
   ): {
@@ -24,6 +44,8 @@ export class TurnEngine {
     logs: LogEntry[];
     nextGameState: GameState;
   } {
+    this.preChecks(gameState);
+  
     // TODO:
     // 1. pré-contrôles
     // 2. validation des intentions

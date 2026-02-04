@@ -80,7 +80,6 @@ export class TurnEngine {
   /**
    * Phase 3 — Économie
    * Pour le MVP initial, cette phase ne fait encore aucun calcul.
-   * Elle prépare l’architecture et les logs.
    */
   private runEconomy(
     gameState: GameState
@@ -91,6 +90,28 @@ export class TurnEngine {
       turn: gameState.instance.currentTurn,
       phase: 'economy',
       message: 'Economy phase executed (no effects yet)',
+      visibility: 'public',
+    });
+
+    return {
+      deltas: [],
+      logs,
+    };
+  }
+
+  /**
+   * Phase 4 — Recherche
+   * Pour le MVP initial, cette phase ne fait encore aucun calcul réel.
+   */
+  private runResearch(
+    gameState: GameState
+  ): { deltas: Delta[]; logs: LogEntry[] } {
+    const logs: LogEntry[] = [];
+
+    logs.push({
+      turn: gameState.instance.currentTurn,
+      phase: 'research',
+      message: 'Research phase executed (no effects yet)',
       visibility: 'public',
     });
 
@@ -128,8 +149,13 @@ export class TurnEngine {
     allLogs.push(...economyLogs);
     allDeltas.push(...economyDeltas);
 
+    // Phase 4 — recherche
+    const { deltas: researchDeltas, logs: researchLogs } =
+      this.runResearch(gameState);
+    allLogs.push(...researchLogs);
+    allDeltas.push(...researchDeltas);
+
     // TODO:
-    // 4. recherche
     // 5. déplacements
     // 6. combats
     // 7. événements

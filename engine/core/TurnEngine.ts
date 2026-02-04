@@ -13,7 +13,7 @@ import { LogEntry } from '../types/Log';
 
 export class TurnEngine {
   /**
-   * Pré-contrôles avant l’exécution d’un tour.
+   * Phase 1 — Pré-contrôles
    * Aucune modification du GameState n’est autorisée ici.
    */
   private preChecks(gameState: GameState): void {
@@ -33,7 +33,7 @@ export class TurnEngine {
   }
 
   /**
-   * Validation des intentions pour le tour en cours.
+   * Phase 2 — Validation des intentions
    * Ne modifie pas le GameState.
    * Retourne uniquement les intentions valides.
    */
@@ -71,7 +71,6 @@ export class TurnEngine {
         continue;
       }
 
-      // Intention valide (structurellement)
       valid.push(intention);
     }
 
@@ -79,8 +78,30 @@ export class TurnEngine {
   }
 
   /**
+   * Phase 3 — Économie
+   * Pour le MVP initial, cette phase ne fait encore aucun calcul.
+   * Elle prépare l’architecture et les logs.
+   */
+  private runEconomy(
+    gameState: GameState
+  ): { deltas: Delta[]; logs: LogEntry[] } {
+    const logs: LogEntry[] = [];
+
+    logs.push({
+      turn: gameState.instance.currentTurn,
+      phase: 'economy',
+      message: 'Economy phase executed (no effects yet)',
+      visibility: 'public',
+    });
+
+    return {
+      deltas: [],
+      logs,
+    };
+  }
+
+  /**
    * Exécute un tour de jeu complet.
-   * La logique sera ajoutée étape par étape.
    */
   executeTurn(
     gameState: GameState,
@@ -90,25 +111,35 @@ export class TurnEngine {
     logs: LogEntry[];
     nextGameState: GameState;
   } {
+    const allLogs: LogEntry[] = [];
+    const allDeltas: Delta[] = [];
+
     // Phase 1 — pré-contrôles
     this.preChecks(gameState);
 
     // Phase 2 — validation des intentions
-    const { valid, logs } = this.validateIntentions(gameState, intentions);
+    const { valid, logs: intentionLogs } =
+      this.validateIntentions(gameState, intentions);
+    allLogs.push(...intentionLogs);
+
+    // Phase 3 — économie
+    const { deltas: economyDeltas, logs: economyLogs } =
+      this.runEconomy(gameState);
+    allLogs.push(...economyLogs);
+    allDeltas.push(...economyDeltas);
 
     // TODO:
-    // 3. économie
     // 4. recherche
     // 5. déplacements
     // 6. combats
     // 7. événements
     // 8. scoring & fin de partie
-    // 9. logs
+    // 9. logs finaux
     // 10. clôture du tour
 
     return {
-      deltas: [],
-      logs,
+      deltas: allDeltas,
+      logs: allLogs,
       nextGameState: gameState,
     };
   }

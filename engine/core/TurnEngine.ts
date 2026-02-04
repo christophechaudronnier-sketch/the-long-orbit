@@ -79,7 +79,6 @@ export class TurnEngine {
 
   /**
    * Phase 3 — Économie
-   * Pour le MVP initial, cette phase ne fait encore aucun calcul.
    */
   private runEconomy(
     gameState: GameState
@@ -93,15 +92,11 @@ export class TurnEngine {
       visibility: 'public',
     });
 
-    return {
-      deltas: [],
-      logs,
-    };
+    return { deltas: [], logs };
   }
 
   /**
    * Phase 4 — Recherche
-   * Pour le MVP initial, cette phase ne fait encore aucun calcul réel.
    */
   private runResearch(
     gameState: GameState
@@ -115,10 +110,26 @@ export class TurnEngine {
       visibility: 'public',
     });
 
-    return {
-      deltas: [],
-      logs,
-    };
+    return { deltas: [], logs };
+  }
+
+  /**
+   * Phase 5 — Déplacements
+   * Aucun combat n’est résolu ici.
+   */
+  private runMovements(
+    gameState: GameState
+  ): { deltas: Delta[]; logs: LogEntry[] } {
+    const logs: LogEntry[] = [];
+
+    logs.push({
+      turn: gameState.instance.currentTurn,
+      phase: 'movement',
+      message: 'Movement phase executed (no effects yet)',
+      visibility: 'public',
+    });
+
+    return { deltas: [], logs };
   }
 
   /**
@@ -155,8 +166,13 @@ export class TurnEngine {
     allLogs.push(...researchLogs);
     allDeltas.push(...researchDeltas);
 
+    // Phase 5 — déplacements
+    const { deltas: movementDeltas, logs: movementLogs } =
+      this.runMovements(gameState);
+    allLogs.push(...movementLogs);
+    allDeltas.push(...movementDeltas);
+
     // TODO:
-    // 5. déplacements
     // 6. combats
     // 7. événements
     // 8. scoring & fin de partie

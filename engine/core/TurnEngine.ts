@@ -14,7 +14,6 @@ import { LogEntry } from '../types/Log';
 export class TurnEngine {
   /**
    * Phase 1 — Pré-contrôles
-   * Aucune modification du GameState n’est autorisée ici.
    */
   private preChecks(gameState: GameState): void {
     if (!gameState) {
@@ -34,8 +33,6 @@ export class TurnEngine {
 
   /**
    * Phase 2 — Validation des intentions
-   * Ne modifie pas le GameState.
-   * Retourne uniquement les intentions valides.
    */
   private validateIntentions(
     gameState: GameState,
@@ -45,7 +42,6 @@ export class TurnEngine {
     const valid: Intention[] = [];
 
     for (const intention of intentions) {
-      // Vérifie le tour
       if (intention.turn !== gameState.instance.currentTurn) {
         logs.push({
           turn: gameState.instance.currentTurn,
@@ -57,7 +53,6 @@ export class TurnEngine {
         continue;
       }
 
-      // Vérifie la faction
       const factionExists = gameState.factions.some(
         (f) => f.factionId === intention.factionId
       );
@@ -83,16 +78,17 @@ export class TurnEngine {
   private runEconomy(
     gameState: GameState
   ): { deltas: Delta[]; logs: LogEntry[] } {
-    const logs: LogEntry[] = [];
-
-    logs.push({
-      turn: gameState.instance.currentTurn,
-      phase: 'economy',
-      message: 'Economy phase executed (no effects yet)',
-      visibility: 'public',
-    });
-
-    return { deltas: [], logs };
+    return {
+      deltas: [],
+      logs: [
+        {
+          turn: gameState.instance.currentTurn,
+          phase: 'economy',
+          message: 'Economy phase executed (no effects yet)',
+          visibility: 'public',
+        },
+      ],
+    };
   }
 
   /**
@@ -101,35 +97,56 @@ export class TurnEngine {
   private runResearch(
     gameState: GameState
   ): { deltas: Delta[]; logs: LogEntry[] } {
-    const logs: LogEntry[] = [];
-
-    logs.push({
-      turn: gameState.instance.currentTurn,
-      phase: 'research',
-      message: 'Research phase executed (no effects yet)',
-      visibility: 'public',
-    });
-
-    return { deltas: [], logs };
+    return {
+      deltas: [],
+      logs: [
+        {
+          turn: gameState.instance.currentTurn,
+          phase: 'research',
+          message: 'Research phase executed (no effects yet)',
+          visibility: 'public',
+        },
+      ],
+    };
   }
 
   /**
    * Phase 5 — Déplacements
-   * Aucun combat n’est résolu ici.
    */
   private runMovements(
     gameState: GameState
   ): { deltas: Delta[]; logs: LogEntry[] } {
-    const logs: LogEntry[] = [];
+    return {
+      deltas: [],
+      logs: [
+        {
+          turn: gameState.instance.currentTurn,
+          phase: 'movement',
+          message: 'Movement phase executed (no effects yet)',
+          visibility: 'public',
+        },
+      ],
+    };
+  }
 
-    logs.push({
-      turn: gameState.instance.currentTurn,
-      phase: 'movement',
-      message: 'Movement phase executed (no effects yet)',
-      visibility: 'public',
-    });
-
-    return { deltas: [], logs };
+  /**
+   * Phase 6 — Combats
+   * La résolution réelle des combats sera implémentée plus tard.
+   */
+  private runCombats(
+    gameState: GameState
+  ): { deltas: Delta[]; logs: LogEntry[] } {
+    return {
+      deltas: [],
+      logs: [
+        {
+          turn: gameState.instance.currentTurn,
+          phase: 'combat',
+          message: 'Combat phase executed (no effects yet)',
+          visibility: 'public',
+        },
+      ],
+    };
   }
 
   /**
@@ -150,30 +167,31 @@ export class TurnEngine {
     this.preChecks(gameState);
 
     // Phase 2 — validation des intentions
-    const { valid, logs: intentionLogs } =
+    const { logs: intentionLogs } =
       this.validateIntentions(gameState, intentions);
     allLogs.push(...intentionLogs);
 
     // Phase 3 — économie
-    const { deltas: economyDeltas, logs: economyLogs } =
-      this.runEconomy(gameState);
-    allLogs.push(...economyLogs);
-    allDeltas.push(...economyDeltas);
+    const economy = this.runEconomy(gameState);
+    allLogs.push(...economy.logs);
+    allDeltas.push(...economy.deltas);
 
     // Phase 4 — recherche
-    const { deltas: researchDeltas, logs: researchLogs } =
-      this.runResearch(gameState);
-    allLogs.push(...researchLogs);
-    allDeltas.push(...researchDeltas);
+    const research = this.runResearch(gameState);
+    allLogs.push(...research.logs);
+    allDeltas.push(...research.deltas);
 
     // Phase 5 — déplacements
-    const { deltas: movementDeltas, logs: movementLogs } =
-      this.runMovements(gameState);
-    allLogs.push(...movementLogs);
-    allDeltas.push(...movementDeltas);
+    const movement = this.runMovements(gameState);
+    allLogs.push(...movement.logs);
+    allDeltas.push(...movement.deltas);
+
+    // Phase 6 — combats
+    const combat = this.runCombats(gameState);
+    allLogs.push(...combat.logs);
+    allDeltas.push(...combat.deltas);
 
     // TODO:
-    // 6. combats
     // 7. événements
     // 8. scoring & fin de partie
     // 9. logs finaux

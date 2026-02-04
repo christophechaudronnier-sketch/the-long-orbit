@@ -3,7 +3,7 @@
  * -----------------
  * Orchestrateur principal d’un tour de jeu.
  * Ce fichier contient la structure du moteur,
- * PAS encore la logique métier.
+ * PAS encore la logique métier complète.
  */
 
 import { GameState } from '../types/GameState';
@@ -12,7 +12,7 @@ import { Delta } from '../types/Delta';
 import { LogEntry } from '../types/Log';
 
 export class TurnEngine {
-    /**
+  /**
    * Pré-contrôles avant l’exécution d’un tour.
    * Aucune modification du GameState n’est autorisée ici.
    */
@@ -33,10 +33,56 @@ export class TurnEngine {
   }
 
   /**
+   * Validation des intentions pour le tour en cours.
+   * Ne modifie pas le GameState.
+   * Retourne uniquement les intentions valides.
+   */
+  private validateIntentions(
+    gameState: GameState,
+    intentions: Intention[]
+  ): { valid: Intention[]; logs: LogEntry[] } {
+    const logs: LogEntry[] = [];
+    const valid: Intention[] = [];
+
+    for (const intention of intentions) {
+      // Vérifie le tour
+      if (intention.turn !== gameState.instance.currentTurn) {
+        logs.push({
+          turn: gameState.instance.currentTurn,
+          phase: 'intentions',
+          message: `Invalid intention: wrong turn (${intention.turn})`,
+          visibility: 'faction',
+          factionId: intention.factionId,
+        });
+        continue;
+      }
+
+      // Vérifie la faction
+      const factionExists = gameState.factions.some(
+        (f) => f.factionId === intention.factionId
+      );
+      if (!factionExists) {
+        logs.push({
+          turn: gameState.instance.currentTurn,
+          phase: 'intentions',
+          message: `Invalid intention: unknown faction (${intention.factionId})`,
+          visibility: 'public',
+        });
+        continue;
+      }
+
+      // Intention valide (structurellement)
+      valid.push(intention);
+    }
+
+    return { valid, logs };
+  }
+
+  /**
    * Exécute un tour de jeu complet.
    * La logique sera ajoutée étape par étape.
    */
-   executeTurn(
+  executeTurn(
     gameState: GameState,
     intentions: Intention[]
   ): {
@@ -44,11 +90,13 @@ export class TurnEngine {
     logs: LogEntry[];
     nextGameState: GameState;
   } {
+    // Phase 1 — pré-contrôles
     this.preChecks(gameState);
-  
+
+    // Phase 2 — validation des intentions
+    const { valid, logs } = this.validateIntentions(gameState, intentions);
+
     // TODO:
-    // 1. pré-contrôles
-    // 2. validation des intentions
     // 3. économie
     // 4. recherche
     // 5. déplacements
@@ -60,7 +108,7 @@ export class TurnEngine {
 
     return {
       deltas: [],
-      logs: [],
+      logs,
       nextGameState: gameState,
     };
   }

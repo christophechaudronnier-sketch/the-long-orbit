@@ -6,6 +6,7 @@
  * PAS encore la logique métier complète.
  */
 
+import { EconomyModule } from "../modules/economy/EconomyModule";
 import { GameState } from '../types/GameState';
 import { Intention } from '../types/Intention';
 import { Delta } from '../types/Delta';
@@ -72,24 +73,26 @@ export class TurnEngine {
     return { valid, logs };
   }
 
-  /**
-   * Phase 3 — Économie
-   */
-  private runEconomy(
-    gameState: GameState
-  ): { deltas: Delta[]; logs: LogEntry[] } {
-    return {
-      deltas: [],
-      logs: [
-        {
-          turn: gameState.instance.currentTurn,
-          phase: 'economy',
-          message: 'Economy phase executed (no effects yet)',
-          visibility: 'public',
-        },
-      ],
-    };
-  }
+/**
+ * Phase 3 — Économie
+ */
+private runEconomy(
+  gameState: GameState
+): { deltas: Delta[]; logs: LogEntry[] } {
+  const deltas = EconomyModule.compute(gameState);
+
+  const logs: LogEntry[] = [
+    {
+      turn: gameState.instance.currentTurn,
+      phase: "economy",
+      message: `Economy phase executed: ${deltas.length} resource delta(s) generated`,
+      visibility: "public",
+    },
+  ];
+
+  return { deltas, logs };
+}
+
 
   /**
    * Phase 4 — Recherche

@@ -6,6 +6,7 @@
  * PAS encore la logique métier complète.
  */
 
+import { DeltaApplier } from "./DeltaApplier";
 import { EconomyModule } from "../modules/economy/EconomyModule";
 import { GameState } from '../types/GameState';
 import { Intention } from '../types/Intention';
@@ -284,14 +285,18 @@ private runEconomy(
 
     // Phase 9 — logs finaux
     const finalLogs = this.finalizeLogs(gameState, allLogs);
+    
+// Application des deltas au GameState
+const updatedGameState = DeltaApplier.apply(gameState, allDeltas);
 
-    // Phase 10 — clôture
-    const closure = this.closeTurn(gameState);
+// Phase 10 — clôture
+const closure = this.closeTurn(updatedGameState);
 
-    return {
-      deltas: allDeltas,
-      logs: [...finalLogs.logs, ...closure.logs],
-      nextGameState: closure.nextGameState,
-    };
+return {
+  deltas: allDeltas,
+  logs: [...finalLogs.logs, ...closure.logs],
+  nextGameState: closure.nextGameState,
+};
+
   }
 }

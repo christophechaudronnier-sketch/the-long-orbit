@@ -17,13 +17,12 @@ export interface Intention {
   factionId: string;
 
   /**
-   * Type d’intention (ex: build_mine, move_fleet, attack_system)
+   * Type d’intention
    */
   type: string;
 
   /**
    * Données minimales nécessaires à la résolution
-   * (aucun calcul, aucun résultat attendu)
    */
   payload: unknown;
 }
@@ -35,5 +34,16 @@ export interface BuildMineIntention extends Intention {
   type: "build_mine";
   payload: {
     systemId: string;
+  };
+}
+
+/**
+ * Intention spécifique — Explorer un système neutre
+ */
+export interface ExploreSystemIntention extends Intention {
+  type: "explore_system";
+  payload: {
+    fleetId: string;
+    targetSystemId: string;
   };
 }

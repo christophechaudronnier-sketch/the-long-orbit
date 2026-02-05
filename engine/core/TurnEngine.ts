@@ -1,9 +1,7 @@
 /**
  * Turn Engine (core)
  * -----------------
- * Orchestrateur principal d’un tour de jeu.
- * Applique strictement les phases du tour et délègue
- * toute logique métier aux modules.
+ * Orchestrateur principal d’un tour de jeu (v1 jouable).
  */
 
 import { GameState } from "../types/GameState";
@@ -15,30 +13,14 @@ import { EconomyModule } from "../modules/economy/EconomyModule";
 import { DeltaApplier } from "./DeltaApplier";
 
 export class TurnEngine {
-  /**
-   * Phase 1 — Pré-contrôles
-   */
   private preChecks(gameState: GameState): void {
-    if (!gameState) {
-      throw new Error("GameState is undefined");
-    }
-
-    if (!gameState.instance) {
-      throw new Error("GameState.instance is missing");
-    }
-
-    if (gameState.instance.status !== "active") {
-      throw new Error(
-        `Cannot execute turn: instance status is ${gameState.instance.status}`
-      );
+    if (!gameState?.instance || gameState.instance.status !== "active") {
+      throw new Error("GameState not active");
     }
   }
 
   /**
-   * Phase 2 — Validation des intentions
-   * - intentions du bon tour
-   * - faction existante
-   * - 1 action majeure max
+   * Phase — Validation des intentions
    */
   private validateIntentions(
     gameState: GameState,
@@ -47,49 +29,25 @@ export class TurnEngine {
     const logs: LogEntry[] = [];
     const valid: Intention[] = [];
 
-    // Vérifications de base
-    for (const intention of intentions) {
-      if (intention.turn !== gameState.instance.currentTurn) {
-        logs.push({
-          turn: gameState.instance.currentTurn,
-          phase: "intentions",
-          message: `Invalid intention: wrong turn (${intention.turn})`,
-          visibility: "faction",
-          factionId: intention.factionId,
-        });
+    for (const i of intentions) {
+      if (i.turn !== gameState.instance.currentTurn) continue;
+      if (!gameState.factions.some((f) => f.factionId === i.factionId))
         continue;
-      }
-
-      const factionExists = gameState.factions.some(
-        (f) => f.factionId === intention.factionId
-      );
-
-      if (!factionExists) {
-        logs.push({
-          turn: gameState.instance.currentTurn,
-          phase: "intentions",
-          message: `Invalid intention: unknown faction (${intention.factionId})`,
-          visibility: "public",
-        });
-        continue;
-      }
-
-      valid.push(intention);
+      valid.push(i);
     }
 
-    // Règle : 1 action majeure par tour
-    const majorActions = valid.filter(
+    const major = valid.filter(
       (i) =>
         i.type === "build_mine" ||
         i.type === "explore_system" ||
         i.type === "attack_system"
     );
 
-    if (majorActions.length > 1) {
+    if (major.length > 1) {
       logs.push({
         turn: gameState.instance.currentTurn,
         phase: "intentions",
-        message: "Only one major action is allowed per turn",
+        message: "Only one major action allowed per turn",
         visibility: "public",
       });
 
@@ -108,8 +66,7 @@ export class TurnEngine {
   }
 
   /**
-   * Phase — Exploration (v1)
-   * Prise de contrôle d’un système neutre
+   * Phase — Exploration
    */
   private runExploration(
     gameState: GameState
@@ -117,24 +74,21 @@ export class TurnEngine {
     const deltas: Delta[] = [];
     const logs: LogEntry[] = [];
 
-    const exploreIntentions = gameState.intentions.filter(
+    for (const i of gameState.intentions.filter(
       (i) => i.type === "explore_system"
-    );
-
-    for (const intention of exploreIntentions) {
-      const { factionId, payload } = intention;
+    )) {
+      const { factionId, payload } = i;
       const { targetSystemId } = payload as any;
 
       const system = gameState.systems.find(
         (s) => s.systemId === targetSystemId
       );
 
-      if (!system) continue;
-      if (system.ownerFactionId) continue;
+      if (!system || system.ownerFactionId) continue;
 
       deltas.push({
         type: "control",
-        systemId: system.systemId,
+        systemId,
         previousOwnerFactionId: null,
         newOwnerFactionId: factionId,
       });
@@ -142,9 +96,79 @@ export class TurnEngine {
       logs.push({
         turn: gameState.instance.currentTurn,
         phase: "exploration",
-        message: `System ${system.systemId} explored and claimed`,
+        message: `System ${systemId} explored`,
         visibility: "public",
       });
+    }
+
+    return { deltas, logs };
+  }
+
+  /**
+   * Phase — Combat / Attaque
+   */
+  private runCombat(
+    gameState: GameState
+  ): { deltas: Delta[]; logs: LogEntry[] } {
+    const deltas: Delta[] = [];
+    const logs: LogEntry[] = [];
+
+    for (const i of gameState.intentions.filter(
+      (i) => i.type === "attack_system"
+    )) {
+      const { factionId, payload } = i;
+      const { fleetId, targetSystemId } = payload as any;
+
+      const attackerFleet = gameState.fleets.find(
+        (f) => f.fleetId === fleetId && f.ownerFactionId === factionId
+      );
+      if (!attackerFleet) continue;
+
+      const system = gameState.systems.find(
+        (s) => s.systemId === targetSystemId
+      );
+      if (!system || !system.ownerFactionId) continue;
+
+      const defendingFactionId = system.ownerFactionId;
+      const defenderFleet = gameState.fleets.find(
+        (f) =>
+          f.ownerFactionId === defendingFactionId &&
+          f.locationSystemId === system.systemId
+      );
+
+      const attackStrength = attackerFleet.strength;
+      const defenseStrength = defenderFleet?.strength ?? 0;
+
+      const attackerWins = attackStrength > defenseStrength;
+
+      if (attackerWins) {
+        deltas.push({
+          type: "control",
+          systemId: system.systemId,
+          previousOwnerFactionId: defendingFactionId,
+          newOwnerFactionId: factionId,
+        });
+
+        if (defenderFleet) {
+          deltas.push({ type: "fleet_destroyed", fleetId: defenderFleet.fleetId });
+        }
+
+        logs.push({
+          turn: gameState.instance.currentTurn,
+          phase: "combat",
+          message: `Attack succeeded on ${system.systemId}`,
+          visibility: "public",
+        });
+      } else {
+        deltas.push({ type: "fleet_destroyed", fleetId: attackerFleet.fleetId });
+
+        logs.push({
+          turn: gameState.instance.currentTurn,
+          phase: "combat",
+          message: `Attack failed on ${system.systemId}`,
+          visibility: "public",
+        });
+      }
     }
 
     return { deltas, logs };
@@ -157,80 +181,50 @@ export class TurnEngine {
     gameState: GameState
   ): { deltas: Delta[]; logs: LogEntry[] } {
     const deltas = EconomyModule.compute(gameState);
-
-    const logs: LogEntry[] = [
-      {
-        turn: gameState.instance.currentTurn,
-        phase: "economy",
-        message: `Economy phase executed (${deltas.length} deltas)`,
-        visibility: "public",
-      },
-    ];
-
-    return { deltas, logs };
-  }
-
-  /**
-   * Phase finale — Clôture du tour
-   */
-  private closeTurn(
-    gameState: GameState
-  ): { nextGameState: GameState; logs: LogEntry[] } {
     return {
-      nextGameState: gameState,
+      deltas,
       logs: [
         {
           turn: gameState.instance.currentTurn,
-          phase: "closure",
-          message: "Turn closed",
+          phase: "economy",
+          message: "Economy resolved",
           visibility: "public",
         },
       ],
     };
   }
 
-  /**
-   * Exécution complète d’un tour
-   */
   executeTurn(
     gameState: GameState,
     intentions: Intention[]
-  ): {
-    deltas: Delta[];
-    logs: LogEntry[];
-    nextGameState: GameState;
-  } {
+  ): { deltas: Delta[]; logs: LogEntry[]; nextGameState: GameState } {
     const allLogs: LogEntry[] = [];
     const allDeltas: Delta[] = [];
 
-    // Phase 1
     this.preChecks(gameState);
 
-    // Phase 2
     const validated = this.validateIntentions(gameState, intentions);
     gameState.intentions = validated.valid;
     allLogs.push(...validated.logs);
 
-    // Phase exploration
     const exploration = this.runExploration(gameState);
     allLogs.push(...exploration.logs);
     allDeltas.push(...exploration.deltas);
 
-    // Phase économie
+    const combat = this.runCombat(gameState);
+    allLogs.push(...combat.logs);
+    allDeltas.push(...combat.deltas);
+
     const economy = this.runEconomy(gameState);
     allLogs.push(...economy.logs);
     allDeltas.push(...economy.deltas);
 
-    // Application des deltas
     const updatedGameState = DeltaApplier.apply(gameState, allDeltas);
-
-    // Clôture
-    const closure = this.closeTurn(updatedGameState);
 
     return {
       deltas: allDeltas,
-      logs: [...allLogs, ...closure.logs],
-      nextGameState: closure.nextGameState,
+      logs: allLogs,
+      nextGameState: updatedGameState,
     };
   }
 }

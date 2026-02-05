@@ -6,29 +6,14 @@
  */
 
 export interface Intention {
-  /**
-   * Tour concerné par l’intention
-   */
   turn: number;
-
-  /**
-   * Faction émettrice
-   */
   factionId: string;
-
-  /**
-   * Type d’intention
-   */
   type: string;
-
-  /**
-   * Données minimales nécessaires à la résolution
-   */
   payload: unknown;
 }
 
 /**
- * Intention spécifique — Construire une mine
+ * Construire une mine
  */
 export interface BuildMineIntention extends Intention {
   type: "build_mine";
@@ -38,10 +23,21 @@ export interface BuildMineIntention extends Intention {
 }
 
 /**
- * Intention spécifique — Explorer un système neutre
+ * Explorer un système neutre
  */
 export interface ExploreSystemIntention extends Intention {
   type: "explore_system";
+  payload: {
+    fleetId: string;
+    targetSystemId: string;
+  };
+}
+
+/**
+ * Attaquer un système ennemi
+ */
+export interface AttackSystemIntention extends Intention {
+  type: "attack_system";
   payload: {
     fleetId: string;
     targetSystemId: string;

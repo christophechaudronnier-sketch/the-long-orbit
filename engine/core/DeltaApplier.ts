@@ -1,7 +1,7 @@
 // engine/core/DeltaApplier.ts
 
-import { GameState } from "../types/GameState";
-import { Delta } from "../types/Delta";
+import type { GameState } from "../types/GameState";
+import type { Delta } from "../types/Delta";
 
 /**
  * DeltaApplier
@@ -15,20 +15,17 @@ import { Delta } from "../types/Delta";
  */
 export class DeltaApplier {
   static apply(gameState: GameState, deltas: Delta[]): GameState {
-    // Pour le MVP, on travaille sur une copie simple
     const nextGameState: GameState = structuredClone(gameState);
 
     for (const delta of deltas) {
       switch (delta.type) {
         case "resource":
-          this.applyResourceDelta(nextGameState, delta);
+          this.applyResourceDelta(nextGameState, delta as any);
           break;
 
-        // Deltas futurs :
-        // case "research":
-        // case "movement":
-        // case "combat":
-        // case "control":
+        case "system_control":
+          this.applySystemControlDelta(nextGameState, delta as any);
+          break;
 
         default:
           throw new Error(`Unknown delta type: ${delta.type}`);
@@ -38,9 +35,10 @@ export class DeltaApplier {
     return nextGameState;
   }
 
-  /**
-   * Application d'un ResourceDelta
-   */
+  /* ======================================== */
+  /* ===== RESOURCE DELTA =================== */
+  /* ======================================== */
+
   private static applyResourceDelta(
     gameState: GameState,
     delta: any
@@ -60,5 +58,40 @@ export class DeltaApplier {
     }
 
     factionResources.resources[delta.resourceKey] += delta.amount;
+  }
+
+  /* ======================================== */
+  /* ===== SYSTEM CONTROL DELTA ============= */
+  /* ======================================== */
+
+  private static applySystemControlDelta(
+    gameState: GameState,
+    delta: any
+  ): void {
+    const { factionId, systemId } = delta;
+
+    const system = gameState.systems.find(
+      (s) => s.systemId === systemId
+    );
+
+    if (!system) {
+      throw new Error(`SystemControlDelta error: system ${systemId} not found`);
+    }
+
+    const faction = gameState.factions.find(
+      (f) => f.factionId === factionId
+    );
+
+    if (!faction) {
+      throw new Error(`SystemControlDelta error: faction ${factionId} not found`);
+    }
+
+    // Mise à jour du propriétaire du système
+    system.ownerFactionId = factionId;
+
+    // Ajout du système dans controlledSystems
+    if (!faction.controlledSystems.includes(systemId)) {
+      faction.controlledSystems.push(systemId);
+    }
   }
 }

@@ -1,54 +1,60 @@
 import { useState } from "react";
-import "./App.css";
 
-// Import moteur
-import { TurnEngine } from "../../engine/core/TurnEngine";
-import type { GameState } from "../../engine/types/GameState";
+import type { GameState, IntentionState } from "@engine/types/GameState";
+import { TurnEngine } from "@engine/core/TurnEngine";
+import { createInitialGameState } from "@engine/core/GameStateFactory";
 
-// GameState initial minimal compatible moteur
-const initialGameState: GameState = {
-  instance: {
-    instanceId: "instance-1",
-    status: "active",
-    currentTurn: 1,
-    maxTurns: 80,
-    seed: 123,
-    createdAt: new Date().toISOString(),
-    lastTurnAt: new Date().toISOString(),
-  },
-  factions: [],
-  systems: [],
-  resources: [],
-  technologies: [],
-  fleets: [],
-  intentions: [],
-  logs: [],
-};
+import { GameLayout } from "./components/layout/GameLayout";
+import { GameHeader } from "./components/game/GameHeader";
+import { ControlPanel } from "./components/game/ControlPanel";
+import { LogsPanel } from "./components/game/LogsPanel";
 
 function App() {
-  const [gameState, setGameState] = useState<GameState>(initialGameState);
+  const [gameState, setGameState] = useState<GameState>(
+    createInitialGameState()
+  );
+
+  const [logs, setLogs] = useState<
+    { turn: number; phase: string; message: string }[]
+  >([]);
 
   const handleResolveTurn = () => {
     const engine = new TurnEngine();
 
-    // Ton moteur attend (gameState, intentions)
-    const result = engine.executeTurn(gameState, []);
+    const intentions: IntentionState[] = [
+      {
+        turn: gameState.instance.currentTurn,
+        factionId: "f1",
+        type: "explore_system",
+        payload: {
+          targetSystemId: "s1",
+        },
+      },
+    ];
 
-    // Le moteur retourne un objet avec nextGameState
+    const result = engine.executeTurn(gameState, intentions);
+
     setGameState(result.nextGameState);
+    setLogs(result.logs);
   };
 
   return (
-    <div style={{ padding: "1rem" }}>
-      <h1>The Long Orbit</h1>
+    <GameLayout>
+      <GameHeader gameState={gameState} />
 
-      <button onClick={handleResolveTurn}>
-        Résoudre le tour
-      </button>
+      <ControlPanel onResolveTurn={handleResolveTurn} />
 
-      <h2>GameState</h2>
-      <pre>{JSON.stringify(gameState, null, 2)}</pre>
-    </div>
+      <h3>Systems</h3>
+      <ul>
+        {gameState.systems.map((s) => (
+          <li key={s.systemId}>
+            {s.systemId} — Owner: {s.ownerFactionId ?? "Neutral"}
+          </li>
+        ))}
+      </ul>
+
+      <LogsPanel logs={logs} />
+    </GameLayout>
   );
 }
 

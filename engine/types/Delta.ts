@@ -1,14 +1,9 @@
 /**
- * Delta (type)
- * ------------
- * Représente une modification proposée du GameState.
- * Les deltas sont calculés par les modules et appliqués
- * exclusivement par le Turn Engine.
+ * Delta abstrait.
+ * Les implémentations concrètes sont définies par les modules.
  */
 
 export interface Delta {
-  /**
-   * Type du delta (ex: resource, movement, combat, control)
-   */
   type: string;
+  [key: string]: any;
 }
